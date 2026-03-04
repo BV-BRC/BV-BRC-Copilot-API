@@ -2,7 +2,7 @@
   "servers": {
     "bvbrc_server": {
       "name": "BV-BRC MCP Server",
-      "url": "http://140.221.78.67:8053",
+      "url": "http://140.221.39.6:8051",
       "type": "mcp",
       "auth": null,
       "timeout": 30000,

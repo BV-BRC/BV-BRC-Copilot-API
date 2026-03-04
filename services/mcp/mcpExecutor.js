@@ -20,6 +20,25 @@ const DEFAULT_RAG_FRAGMENTS = ['helpdesk_service_usage'];
 const LOCAL_SESSION_BASE_PATH = '/tmp/copilot/sessions';
 const WORKSPACE_PATH_IN_CODE_REGEX = /\/[^/\s"'`]+\/home\/(?:CopilotDownloads|CopilotCodeDev)\/[^\s"'`]+/g;
 
+/**
+ * Return true when a path segment looks like a generic user-id placeholder
+ * that LLMs commonly generate instead of a real workspace user identifier.
+ */
+function _isUserPlaceholderSegment(segment) {
+  if (!segment) return false;
+  const normalized = segment.trim().toLowerCase();
+  const placeholders = new Set([
+    'user', 'username', '{username}', '<username>',
+    'user_id', '{user_id}', '<user_id>',
+    'userid', '{userid}', '<userid>',
+    '__user_id__',
+    'user@domain', 'user@domain.com',
+    'user1@patricbrc.org',
+    'user@patricbrc.org',
+  ]);
+  return placeholders.has(normalized);
+}
+
 function isRagTool(toolId) {
   if (!toolId) return false;
   const ragList = config.global_settings?.rag_tools || DEFAULT_RAG_FRAGMENTS;
@@ -319,6 +338,11 @@ function applySystemParameterOverrides(toolId, parameters = {}, context = {}, lo
             correctedPath = `/${actualUserId}/${segments.slice(1).join('/')}`;
           } else if (firstSegment === 'home') {
             correctedPath = `/${actualUserId}/${segments.join('/')}`;
+          } else if (_isUserPlaceholderSegment(firstSegment)) {
+            // LLM placeholder like "user", "username", "user_id", etc.
+            // Replace with the real user_id and keep any remaining segments.
+            const rest = segments.slice(1).join('/');
+            correctedPath = rest ? `/${actualUserId}/${rest}` : userHomePath;
           } else {
             // Treat short/relative paths (e.g., "/MCP_Dev") as children of user home.
             correctedPath = `${userHomePath}/${segments.join('/')}`;
